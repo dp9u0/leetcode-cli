@@ -1,19 +1,16 @@
 {
-  "name": "leetcode-cli",
-  "version": "2.6.2",
+  "name": "lc",
+  "version": "3.0.0",
   "description": "A cli tool to enjoy leetcode!",
-  "preferGlobal": "true",
   "engines": {
-    "node": ">=4"
+    "node": ">=20"
   },
   "bin": {
-    "leetcode": "./bin/leetcode"
+    "lc": "./bin/leetcode"
   },
   "scripts": {
     "lint": "eslint lib/ test/",
-    "test": "npm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov",
-    "travis": "node bin/pkg",
-    "pkg": "pkg . --out-path=dist/ --targets"
+    "test": "pnpm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov"
   },
   "pkg": {
     "scripts": [
@@ -25,14 +22,14 @@
       "templates"
     ],
     "targets": [
-      "node10-linux-x64",
-      "node10-macos-x64",
-      "node10-win-x64"
+      "node20-linux-x64",
+      "node20-macos-x64",
+      "node20-win-x64"
     ]
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/skygragon/leetcode-cli.git"
+    "url": "http://github.com/dp9u0/leetcode-cli.git"
   },
   "keywords": [
     "leetcode",
@@ -41,37 +38,38 @@
     "tool"
   ],
   "author": {
-    "name": "Eric Wang",
-    "email": "skygragon@gmail.com"
+    "name": "guodengpeng",
+    "email": "guodp9u0@gmail.com"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/skygragon/leetcode-cli/issues"
+    "url": "https://github.com/dp9u0/leetcode-cli/issues"
   },
-  "homepage": "https://github.com/skygragon/leetcode-cli#readme",
+  "homepage": "https://github.com/dp9u0/leetcode-cli#readme",
   "dependencies": {
-    "ansi-styles": "3.2.1",
-    "cheerio": "0.20.0",
+    "ansi-styles": "^3.2.1",
+    "cheerio": "0.22.0",
     "he": "1.2.0",
-    "mkdirp": "0.5.1",
-    "moment": "^2.20.1",
-    "nconf": "0.10.0",
-    "ora": "3.0.0",
-    "prompt": "1.0.0",
+    "mkdirp": "^1.0.4",
+    "moment": "^2.30.1",
+    "nconf": "^0.12.1",
+    "ora": "^3.4.0",
+    "prompt": "1.3.0",
     "request": "2.88.0",
-    "supports-color": "5.5.0",
-    "underscore": "1.9.1",
+    "sqlite3": "^5.1.7",
+    "supports-color": "^5.5.0",
+    "underscore": "1.13.6",
     "wordwrap": "1.0.0",
-    "yargs": "12.0.4"
+    "yargs": "17.7.2"
   },
   "devDependencies": {
     "chai": "4.2.0",
     "eslint": "5.9.0",
     "eslint-config-google": "0.11.0",
-    "mocha": "5.2.0",
+    "mocha": "^8.3.2",
     "nock": "10.0.2",
-    "nyc": "13.1.0",
-    "pkg": "^4.3.4",
+    "nyc": "^15.1.0",
+    "pkg": "^4.5.1",
     "rewire": "4.0.1"
   }
 }
