@@ -1,18 +1,16 @@
 {
-  "name": "vsc-leetcode-cli",
-  "version": "2.8.0",
+  "name": "lc",
+  "version": "3.0.0",
   "description": "A cli tool to enjoy leetcode!",
   "engines": {
-    "node": ">=4"
+    "node": ">=20"
   },
   "bin": {
-    "leetcode": "./bin/leetcode"
+    "lc": "./bin/leetcode"
   },
   "scripts": {
     "lint": "eslint lib/ test/",
-    "test": "npm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov",
-    "travis": "node bin/pkg",
-    "pkg": "pkg . --out-path=dist/ --targets"
+    "test": "pnpm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov"
   },
   "pkg": {
     "scripts": [
@@ -24,14 +22,14 @@
       "templates"
     ],
     "targets": [
-      "node10-linux-x64",
-      "node10-macos-x64",
-      "node10-win-x64"
+      "node20-linux-x64",
+      "node20-macos-x64",
+      "node20-win-x64"
     ]
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/skygragon/leetcode-cli.git"
+    "url": "http://github.com/dp9u0/leetcode-cli.git"
   },
   "keywords": [
     "leetcode",
@@ -40,14 +38,14 @@
     "tool"
   ],
   "author": {
-    "name": "Eric Wang",
-    "email": "skygragon@gmail.com"
+    "name": "guodengpeng",
+    "email": "guodp9u0@gmail.com"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/leetcode-tools/leetcode-cli/issues"
+    "url": "https://github.com/dp9u0/leetcode-cli/issues"
   },
-  "homepage": "https://github.com/leetcode-tools/leetcode-cli#readme",
+  "homepage": "https://github.com/dp9u0/leetcode-cli#readme",
   "dependencies": {
     "ansi-styles": "3.2.1",
     "cheerio": "0.20.0",
