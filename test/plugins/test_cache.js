@@ -267,6 +267,38 @@ describe('plugin:cache', function() {
       });
     });
 
+    it('should cookieLogin purge problems cache ok', function(done) {
+      config.autologin.enable = false;
+      cache.set(h.KEYS.user, USER);
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
+      next.cookieLogin = (user, cb) => cb(null, USER);
+
+      // call detached on purpose, commands/user.js invokes it this way
+      const cookieLogin = plugin.cookieLogin;
+      cookieLogin(USER, function(e, user) {
+        assert.equal(e, null);
+        assert.deepEqual(user, USER);
+        assert.deepEqual(session.getUser(), USER_SAFE);
+        assert.equal(cache.get(h.KEYS.problems), null);
+        assert.equal(cache.get(h.KEYS.problemsMeta), null);
+        done();
+      });
+    });
+
+    it('should cookieLogin fail if client error', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
+      next.cookieLogin = (user, cb) => cb('client cookieLogin error');
+
+      const cookieLogin = plugin.cookieLogin;
+      cookieLogin(USER, function(e, user) {
+        assert.equal(e, 'client cookieLogin error');
+        assert.equal(cache.get(h.KEYS.problems), null);
+        done();
+      });
+    });
+
     it('should logout ok', function(done) {
       // before logout
       cache.set(h.KEYS.user, USER);
