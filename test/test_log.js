@@ -81,6 +81,11 @@ describe('log', function() {
       assert.equal(expected, 'some error');
     });
 
+    it('should ok with null/undefined args', function() {
+      log.info('value:', undefined, null);
+      assert.equal(expected, 'value:  ');
+    });
+
     it('should ok with log.warn', function() {
       log.warn('some error');
       assert.equal(expected, chalk.yellow('[WARN] some error'));
