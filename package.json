@@ -10,7 +10,7 @@
   },
   "scripts": {
     "lint": "eslint lib/ test/",
-    "test": "pnpm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov"
+    "test": "pnpm run lint && nyc mocha test test/commands test/plugins && nyc report --reporter=lcov"
   },
   "repository": {
     "type": "git",
