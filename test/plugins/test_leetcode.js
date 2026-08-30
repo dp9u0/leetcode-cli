@@ -48,7 +48,7 @@ describe('plugin:leetcode', function() {
           user_name: 'NAME'
         }));
       nock('https://leetcode.com').post('/graphql')
-        .reply(200, {data: {user: {username: 'NAME', isCurrentUserPremium: false}}});
+        .reply(200, {data: {userStatus: {username: 'NAME', isPremium: false}}});
     };
 
     it('should ok', function(done) {
@@ -63,6 +63,7 @@ describe('plugin:leetcode', function() {
         assert.equal(user.sessionId, 'SESSION_ID');
         assert.equal(user.sessionCSRF, 'CSRF_TOKEN');
         assert.equal(user.name, 'NAME');
+        assert.equal(user.paid, false);
         done();
       });
     });
@@ -142,6 +143,10 @@ describe('plugin:leetcode', function() {
           }
         }));
 
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {userStatus: {username: 'Eric', isPremium: true}}});
+
       plugin.login({}, function(e, user) {
         assert.equal(e, null);
 
@@ -150,6 +155,43 @@ describe('plugin:leetcode', function() {
         assert.equal(user.sessionId, 'SESSION_ID');
         assert.equal(user.name, 'Eric');
         assert.equal(user.hash, 'abcdef');
+        assert.equal(user.paid, true);
+        done();
+      });
+    });
+
+    it('should login ok even if user info unavailable', function(done) {
+      nock('https://leetcode.com')
+        .get('/accounts/login/')
+        .reply(200, '', { 'Set-Cookie': [
+            'csrftoken=LOGIN_CSRF_TOKEN; Max-Age=31449600; Path=/; secure'
+          ]});
+
+      nock('https://leetcode.com')
+        .post('/accounts/login/')
+        .reply(302, '', {
+          'Set-Cookie': [
+            'csrftoken=SESSION_CSRF_TOKEN; Max-Age=31449600; Path=/; secure',
+            'LEETCODE_SESSION=SESSION_ID; Max-Age=31449600; Path=/; secure'
+          ]});
+
+      nock('https://leetcode.com')
+        .get('/list/api/questions')
+        .reply(200, JSON.stringify({
+          user_name: 'Eric',
+          favorites: {
+            private_favorites: [{id_hash: 'abcdef', name: 'Favorite'}]
+          }
+        }));
+
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.login({}, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.name, 'Eric'); // falls back to favorites user_name
+        assert.equal(user.paid, undefined);
         done();
       });
     });
