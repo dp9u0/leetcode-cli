@@ -21,6 +21,8 @@ describe('plugin:cache', function() {
   ];
   const TRANSLATION_CONFIGS = { useEndpointTranslation: false };
   const PROBLEM = {id: 0, fid: 0, slug: 'slug0', category: 'algorithms'};
+  const FRESH_META = () => ({fetchedAt: Date.now()});
+  const EXPIRED_META = () => ({fetchedAt: Date.now() - 25 * 60 * 60 * 1000});
 
   before(function() {
     log.init();
@@ -50,11 +52,60 @@ describe('plugin:cache', function() {
   });
 
   describe('#getProblems', function() {
-    it('should getProblems w/ cache ok', function(done) {
+    it('should getProblems w/ fresh cache ok', function(done) {
       cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
       cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = () => assert.fail('should not reach next plugin');
 
       plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, PROBLEMS);
+        done();
+      });
+    });
+
+    it('should refresh problems w/ expired cache', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, EXPIRED_META());
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      const NEW_PROBLEMS = [{id: 2, fid: 2, name: 'name2', slug: 'slug2', category: 'algorithms'}];
+      next.getProblems = (needT, cb) => cb(null, NEW_PROBLEMS);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, NEW_PROBLEMS);
+        assert.isAtLeast(cache.get(h.KEYS.problemsMeta).fetchedAt, Date.now() - 1000);
+        done();
+      });
+    });
+
+    it('should refresh legacy problems cache w/o meta', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.del(h.KEYS.problemsMeta);
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      let reachedNext = false;
+      next.getProblems = (needT, cb) => { reachedNext = true; return cb(null, PROBLEMS); };
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, PROBLEMS);
+        assert.equal(reachedNext, true);
+        assert.isNumber(cache.get(h.KEYS.problemsMeta).fetchedAt);
+        done();
+      });
+    });
+
+    it('should serve stale problems if refresh fails', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, EXPIRED_META());
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = (needT, cb) => cb('client getProblems error');
+
+      const originWarn = log.warn;
+      log.warn = () => {};
+      plugin.getProblems(false, function(e, problems) {
+        log.warn = originWarn;
         assert.equal(e, null);
         assert.deepEqual(problems, PROBLEMS);
         done();
@@ -138,6 +189,7 @@ describe('plugin:cache', function() {
   describe('#updateProblem', function() {
     it('should updateProblem ok', function(done) {
       cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
       cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
 
       const kv = {value: 'value00'};
