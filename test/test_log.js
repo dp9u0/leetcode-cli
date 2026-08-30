@@ -97,8 +97,11 @@ describe('log', function() {
     });
 
     it('should ok with log.fail', function() {
+      const savedExitCode = process.exitCode;
       log.fail({msg: 'some error', statusCode: 500});
       assert.equal(expected, chalk.red('[ERROR] some error [code=500]'));
+      assert.equal(process.exitCode, 1);
+      process.exitCode = savedExitCode;
 
       log.fail('some error');
       assert.equal(expected, chalk.red('[ERROR] some error'));
