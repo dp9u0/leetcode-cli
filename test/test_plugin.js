@@ -115,7 +115,7 @@ describe('plugin', function() {
       const deps = ['a', 'b:linux', 'b:darwin', 'b:win32', 'c:bad', 'd'];
       const p = new Plugin(100, 'test', '2017.12.26', 'desc', deps);
       p.install(function() {
-        assert.equal(expected, 'npm install --save a b d');
+        assert.equal(expected, 'pnpm add a b d');
         done();
       });
     });
