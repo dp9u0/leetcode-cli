@@ -14,6 +14,9 @@ ${comment.line} Total Submissions: ${totalSubmit}
 ${comment.line} Testcase Example:  ${testcase}
 ${comment.line}
 {{ desc.forEach(function(x) { }}${comment.line} ${x}
+{{ }) }}{{ (hints || []).forEach(function(hint, index) { }}${comment.line}
+${comment.line} Hint ${index + 1}:
+${comment.line} ${hint}
 {{ }) }}${comment.end}
 
 ${comment.singleLine} @lc code=start

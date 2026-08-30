@@ -352,6 +352,8 @@ describe('plugin:leetcode', function() {
         assert.equal(e, null);
         assert.equal(problem.totalAC, '89.7K');
         assert.equal(problem.totalSubmit, '175.7K');
+        assert.deepEqual(problem.hints,
+            ['Can we sort the strings?', 'XOR trick works here.']);
         assert.equal(problem.desc,
           [
             '<p>',
