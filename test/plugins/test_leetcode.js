@@ -40,6 +40,55 @@ describe('plugin:leetcode', function() {
     plugin.__set__('session', session);
   });
 
+  describe('#cookieLogin', function() {
+    const getUserNocks = () => {
+      nock('https://leetcode.com').get('/list/api/questions')
+        .reply(200, JSON.stringify({
+          favorites: {private_favorites: [{name: 'Favorite', id_hash: 'HASH'}]},
+          user_name: 'NAME'
+        }));
+      nock('https://leetcode.com').post('/graphql')
+        .reply(200, {data: {user: {username: 'NAME', isCurrentUserPremium: false}}});
+    };
+
+    it('should ok', function(done) {
+      getUserNocks();
+      const user = {
+        login:  'user',
+        cookie: 'other=1; LEETCODE_SESSION=SESSION_ID; csrftoken=CSRF_TOKEN;'
+      };
+
+      plugin.cookieLogin(user, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.sessionId, 'SESSION_ID');
+        assert.equal(user.sessionCSRF, 'CSRF_TOKEN');
+        assert.equal(user.name, 'NAME');
+        done();
+      });
+    });
+
+    it('should fail if cookie misses LEETCODE_SESSION', function(done) {
+      plugin.cookieLogin({login: 'user', cookie: 'csrftoken=CSRF;'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+
+    it('should fail if cookie misses csrftoken', function(done) {
+      plugin.cookieLogin({login: 'user', cookie: 'LEETCODE_SESSION=SESSION;'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+
+    it('should fail if no cookie', function(done) {
+      plugin.cookieLogin({login: 'user'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+  }); // #cookieLogin
+
   describe('#checkError', function() {
     it('should pass on expected status', function() {
       assert.equal(plugin.checkError(null, {statusCode: 200}, 200), null);
