@@ -21,8 +21,8 @@ describe('plugin:cache', function() {
   ];
   const TRANSLATION_CONFIGS = { useEndpointTranslation: false };
   const PROBLEM = {id: 0, fid: 0, slug: 'slug0', category: 'algorithms'};
-  const FRESH_META = () => ({fetchedAt: Date.now()});
-  const EXPIRED_META = () => ({fetchedAt: Date.now() - 25 * 60 * 60 * 1000});
+  const FRESH_META = () => ({fetchedAt: Date.now(), v: 2});
+  const EXPIRED_META = () => ({fetchedAt: Date.now() - 25 * 60 * 60 * 1000, v: 2});
 
   before(function() {
     log.init();
@@ -92,6 +92,19 @@ describe('plugin:cache', function() {
         assert.deepEqual(problems, PROBLEMS);
         assert.equal(reachedNext, true);
         assert.isNumber(cache.get(h.KEYS.problemsMeta).fetchedAt);
+        done();
+      });
+    });
+
+    it('should refresh problems w/ old meta version', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, {fetchedAt: Date.now(), v: 1});
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = (needT, cb) => cb(null, PROBLEMS);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.equal(cache.get(h.KEYS.problemsMeta).v, 2);
         done();
       });
     });

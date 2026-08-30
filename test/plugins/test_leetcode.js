@@ -244,9 +244,51 @@ describe('plugin:leetcode', function() {
         .get('/api/problems/concurrency/')
         .replyWithFile(200, './test/mock/problems.json.20160911');
 
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   false,
+          questions: [
+            {questionFrontendId: '1', topicTags: [{slug: 'hash-table'}, {slug: 'two-pointers'}]},
+            {questionFrontendId: '2', topicTags: []}
+          ]
+        }}});
+
       plugin.getProblems(false, function(e, problems) {
         assert.equal(e, null);
         assert.equal(problems.length, 377 * 4);
+        // the 2016 mock carries no frontend ids, so every problem falls
+        // back to the empty tag list
+        assert.deepEqual(problems[0].tags, []);
+        done();
+      });
+    });
+
+    it('should ok sans tags if tag fetch fails', function(done) {
+      nock('https://leetcode.com')
+        .get('/api/problems/algorithms/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/database/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/shell/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/concurrency/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.equal(problems.length, 377 * 4);
+        assert.equal(problems[0].tags, undefined);
         done();
       });
     });
@@ -337,6 +379,40 @@ describe('plugin:leetcode', function() {
       });
     });
   }); // #getProblemOfToday
+
+  describe('#getTags', function() {
+    it('should page through the whole tag map', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   true,
+          questions: [{questionFrontendId: '1', topicTags: [{slug: 'hash-table'}, {slug: 'two-pointers'}]}]
+        }}});
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   false,
+          questions: [{questionFrontendId: '2', topicTags: []}]
+        }}});
+
+      plugin.getTags(function(e, map) {
+        assert.equal(e, null);
+        assert.deepEqual(map, {1: ['hash-table', 'two-pointers'], 2: []});
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getTags(function(e, map) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+  }); // #getTags
 
   describe('#getProblem', function() {
     beforeEach(function() {
