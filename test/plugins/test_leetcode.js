@@ -40,6 +40,34 @@ describe('plugin:leetcode', function() {
     plugin.__set__('session', session);
   });
 
+  describe('#checkError', function() {
+    it('should pass on expected status', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 200}, 200), null);
+    });
+
+    it('should map 401 to session expired', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 401}, 200), session.errors.EXPIRED);
+    });
+
+    it('should map 403 to blocked', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 403}, 200), session.errors.BLOCKED);
+    });
+
+    it('should map 429 to blocked', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 429}, 200), session.errors.BLOCKED);
+    });
+
+    it('should keep other http errors', function() {
+      assert.deepEqual(plugin.checkError(null, {statusCode: 500}, 200),
+          {msg: 'http error', statusCode: 500});
+    });
+
+    it('should pass through network error', function() {
+      const e = new Error('boom');
+      assert.equal(plugin.checkError(e, null, 200), e);
+    });
+  }); // #checkError
+
   describe('#login', function() {
     it('should ok', function(done) {
       nock('https://leetcode.com')
@@ -374,10 +402,19 @@ describe('plugin:leetcode', function() {
     });
 
     it('should fail if session expired', function(done) {
-      nock('https://leetcode.com').post('/graphql').reply(403);
+      nock('https://leetcode.com').post('/graphql').reply(401);
 
       plugin.getProblem(PROBLEM, false, function(e, problem) {
         assert.equal(e, session.errors.EXPIRED);
+        done();
+      });
+    });
+
+    it('should fail if blocked by cloudflare/rate-limit', function(done) {
+      nock('https://leetcode.com').post('/graphql').reply(403);
+
+      plugin.getProblem(PROBLEM, false, function(e, problem) {
+        assert.equal(e, session.errors.BLOCKED);
         done();
       });
     });
