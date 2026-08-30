@@ -301,6 +301,43 @@ describe('plugin:leetcode', function() {
     });
   }); // #getCategoryProblems
 
+  describe('#getProblemOfToday', function() {
+    it('should ok', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {activeDailyCodingChallengeQuestion:
+            {question: {titleSlug: 'find-the-difference'}}}});
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.equal(e, null);
+        assert.equal(slug, 'find-the-difference');
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+
+    it('should fail if no daily challenge', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {activeDailyCodingChallengeQuestion: null}});
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.equal(e, 'failed to load problem of today!');
+        done();
+      });
+    });
+  }); // #getProblemOfToday
+
   describe('#getProblem', function() {
     beforeEach(function() {
       PROBLEM.locked = false;

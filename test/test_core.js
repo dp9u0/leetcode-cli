@@ -389,5 +389,33 @@ describe('core', function() {
         done();
       });
     });
+
+    it('should get problem of today ok', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb(null, 'slug1');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.notExists(e);
+        assert.equal(problem.slug, 'slug1');
+        done();
+      });
+    });
+
+    it('should fail if problem of today not found', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb(null, 'slug999');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.equal(e, 'Problem not found!');
+        done();
+      });
+    });
+
+    it('should fail if problem of today client error', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb('client getProblemOfToday error');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.equal(e, 'client getProblemOfToday error');
+        done();
+      });
+    });
   }); // #getProblem
 });
