@@ -12,21 +12,6 @@
     "lint": "eslint lib/ test/",
     "test": "pnpm run lint && nyc mocha test test/plugins && nyc report --reporter=lcov"
   },
-  "pkg": {
-    "scripts": [
-      "lib"
-    ],
-    "assets": [
-      "colors",
-      "icons",
-      "templates"
-    ],
-    "targets": [
-      "node20-linux-x64",
-      "node20-macos-x64",
-      "node20-win-x64"
-    ]
-  },
   "repository": {
     "type": "git",
     "url": "http://github.com/dp9u0/leetcode-cli.git"

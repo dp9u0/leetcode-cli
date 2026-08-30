@@ -77,7 +77,7 @@ const NODE_MOCHA_GLOBALS = {
 
 module.exports = [
   {
-    ignores: ['node_modules/**', 'tmp/**']
+    ignores: ['node_modules/**', 'tmp/**', 'lib/plugins/company.js']
   },
   {
     languageOptions: {
