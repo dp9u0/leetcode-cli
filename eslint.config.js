@@ -66,7 +66,7 @@ const RULES = {
 };
 
 const NODE_MOCHA_GLOBALS = {
-  require: 'readonly', module: 'writable', exports: 'writable',
+  URL: 'readonly', require: 'readonly', module: 'writable', exports: 'writable',
   process: 'readonly', console: 'readonly', Buffer: 'readonly',
   __dirname: 'readonly', __filename: 'readonly', setTimeout: 'readonly',
   setImmediate: 'readonly',
