@@ -357,6 +357,14 @@ describe('core', function() {
       });
     });
 
+    it('should get by url ok', function(done) {
+      core.getProblem('https://leetcode.com/problems/slug0/description/', false, function(e, problem) {
+        assert.notExists(e);
+        assert.deepEqual(problem, PROBLEMS[0]);
+        done();
+      });
+    });
+
     it('should fail if not found', function(done) {
       core.getProblem(3, false, function(e, problem) {
         assert.equal(e, 'Problem not found!');
