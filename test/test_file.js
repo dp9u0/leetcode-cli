@@ -9,9 +9,17 @@ const th = require('./helper');
 
 describe('file', function() {
   let file;
+  const savedHome = process.env.HOME;
+  const savedUserProfile = process.env.USERPROFILE;
 
   beforeEach(function() {
     file = rewire('../lib/file');
+  });
+
+  afterEach(function() {
+    // env tweaks here leak into every suite loaded afterwards otherwise
+    process.env.HOME = savedHome;
+    process.env.USERPROFILE = savedUserProfile;
   });
 
   describe('#dirAndFiles', function() {

@@ -16,11 +16,21 @@ describe('plugin:cache', function() {
   let session;
 
   const PROBLEMS = [
-    {id: 0, fid: 0, name: 'name0', slug: 'slug0', starred: false, desc: '<pre></pre>', likes: '1', dislikes: '1', category: 'algorithms'},
-    {id: 1, fid: 1, name: 'name1', slug: 'slug1', starred: true, desc: '<pre></pre>', likes: '1', dislikes: '1', category: 'algorithms'}
+    {
+      id:       0, fid:      0, name:     'name0', slug:     'slug0', starred:  false,
+      desc:     '<pre></pre>', likes:    '1', dislikes: '1', hints:    [],
+      category: 'algorithms'
+    },
+    {
+      id:       1, fid:      1, name:     'name1', slug:     'slug1', starred:  true,
+      desc:     '<pre></pre>', likes:    '1', dislikes: '1', hints:    [],
+      category: 'algorithms'
+    }
   ];
   const TRANSLATION_CONFIGS = { useEndpointTranslation: false };
   const PROBLEM = {id: 0, fid: 0, slug: 'slug0', category: 'algorithms'};
+  const FRESH_META = () => ({fetchedAt: Date.now(), v: 2});
+  const EXPIRED_META = () => ({fetchedAt: Date.now() - 25 * 60 * 60 * 1000, v: 2});
 
   before(function() {
     log.init();
@@ -50,11 +60,73 @@ describe('plugin:cache', function() {
   });
 
   describe('#getProblems', function() {
-    it('should getProblems w/ cache ok', function(done) {
+    it('should getProblems w/ fresh cache ok', function(done) {
       cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
       cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = () => assert.fail('should not reach next plugin');
 
       plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, PROBLEMS);
+        done();
+      });
+    });
+
+    it('should refresh problems w/ expired cache', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, EXPIRED_META());
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      const NEW_PROBLEMS = [{id: 2, fid: 2, name: 'name2', slug: 'slug2', category: 'algorithms'}];
+      next.getProblems = (needT, cb) => cb(null, NEW_PROBLEMS);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, NEW_PROBLEMS);
+        assert.isAtLeast(cache.get(h.KEYS.problemsMeta).fetchedAt, Date.now() - 1000);
+        done();
+      });
+    });
+
+    it('should refresh legacy problems cache w/o meta', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.del(h.KEYS.problemsMeta);
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      let reachedNext = false;
+      next.getProblems = (needT, cb) => { reachedNext = true; return cb(null, PROBLEMS); };
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.deepEqual(problems, PROBLEMS);
+        assert.equal(reachedNext, true);
+        assert.isNumber(cache.get(h.KEYS.problemsMeta).fetchedAt);
+        done();
+      });
+    });
+
+    it('should refresh problems w/ old meta version', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, {fetchedAt: Date.now(), v: 1});
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = (needT, cb) => cb(null, PROBLEMS);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.equal(cache.get(h.KEYS.problemsMeta).v, 2);
+        done();
+      });
+    });
+
+    it('should serve stale problems if refresh fails', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, EXPIRED_META());
+      cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
+      next.getProblems = (needT, cb) => cb('client getProblems error');
+
+      const originWarn = log.warn;
+      log.warn = () => {};
+      plugin.getProblems(false, function(e, problems) {
+        log.warn = originWarn;
         assert.equal(e, null);
         assert.deepEqual(problems, PROBLEMS);
         done();
@@ -131,13 +203,18 @@ describe('plugin:cache', function() {
       const ret = plugin.saveProblem(problem);
       assert.equal(ret, true);
       assert.deepEqual(cache.get('0.slug0.algorithms'),
-          {id: 0, fid: 0, slug: 'slug0', name: 'name0', desc: '<pre></pre>', likes: '1', dislikes: '1', category: 'algorithms'});
+          {
+            id:       0, fid:      0, slug:     'slug0', name:     'name0',
+            desc:     '<pre></pre>', likes:    '1', dislikes: '1', hints:    [],
+            category: 'algorithms'
+          });
     });
   }); // #saveProblem
 
   describe('#updateProblem', function() {
     it('should updateProblem ok', function(done) {
       cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
       cache.set(h.KEYS.translation, TRANSLATION_CONFIGS);
 
       const kv = {value: 'value00'};
@@ -147,8 +224,16 @@ describe('plugin:cache', function() {
       plugin.getProblems(false, function(e, problems) {
         assert.equal(e, null);
         assert.deepEqual(problems, [
-            {id: 0, fid: 0, name: 'name0', slug: 'slug0', value: 'value00', starred: false, desc: '<pre></pre>', likes: '1', dislikes: '1', category: 'algorithms'},
-            {id: 1, fid: 1, name: 'name1', slug: 'slug1', starred: true, desc: '<pre></pre>', likes: '1', dislikes: '1', category: 'algorithms'}
+            {
+              id:       0, fid:      0, name:     'name0', slug:     'slug0', value:    'value00',
+              starred:  false, desc:     '<pre></pre>', likes:    '1', dislikes: '1',
+              hints:    [], category: 'algorithms'
+            },
+            {
+              id:       1, fid:      1, name:     'name1', slug:     'slug1', starred:  true,
+              desc:     '<pre></pre>', likes:    '1', dislikes: '1', hints:    [],
+              category: 'algorithms'
+            }
         ]);
         done();
       });
@@ -211,6 +296,38 @@ describe('plugin:cache', function() {
 
       plugin.login(USER, function(e, user) {
         assert.equal(e, 'client login error');
+        done();
+      });
+    });
+
+    it('should cookieLogin purge problems cache ok', function(done) {
+      config.autologin.enable = false;
+      cache.set(h.KEYS.user, USER);
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
+      next.cookieLogin = (user, cb) => cb(null, USER);
+
+      // call detached on purpose, commands/user.js invokes it this way
+      const cookieLogin = plugin.cookieLogin;
+      cookieLogin(USER, function(e, user) {
+        assert.equal(e, null);
+        assert.deepEqual(user, USER);
+        assert.deepEqual(session.getUser(), USER_SAFE);
+        assert.equal(cache.get(h.KEYS.problems), null);
+        assert.equal(cache.get(h.KEYS.problemsMeta), null);
+        done();
+      });
+    });
+
+    it('should cookieLogin fail if client error', function(done) {
+      cache.set('problems', PROBLEMS);
+      cache.set(h.KEYS.problemsMeta, FRESH_META());
+      next.cookieLogin = (user, cb) => cb('client cookieLogin error');
+
+      const cookieLogin = plugin.cookieLogin;
+      cookieLogin(USER, function(e, user) {
+        assert.equal(e, 'client cookieLogin error');
+        assert.equal(cache.get(h.KEYS.problems), null);
         done();
       });
     });

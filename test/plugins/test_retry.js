@@ -3,6 +3,7 @@ const assert = require('chai').assert;
 const rewire = require('rewire');
 
 const log = require('../../lib/log');
+const chalk = require('../../lib/chalk');
 
 const config = rewire('../../lib/config');
 const session = rewire('../../lib/session');
@@ -15,6 +16,7 @@ describe('plugin:retry', function() {
 
   before(function() {
     log.init();
+    chalk.init();
     config.init();
     plugin.init();
 
@@ -92,6 +94,26 @@ describe('plugin:retry', function() {
 
     plugin.getProblems(function(e, problems) {
       assert.equal(e, 'unknown error');
+      done();
+    });
+  });
+
+  it('should skip relogin if no password saved', function(done) {
+    config.autologin.enable = true;
+    config.autologin.retry = 2;
+    session.getUser = () => USER; // USER has no pass
+
+    let logins = 0;
+    let n = 0;
+    NEXT.getProblems = function(cb) {
+      return ++n <= 2 ? cb(session.errors.EXPIRED) : cb(null, PROBLEMS);
+    };
+    NEXT.login = (user, cb) => { ++logins; return cb(null, user); };
+
+    plugin.getProblems(function(e, problems) {
+      assert.notExists(e);
+      assert.equal(problems, PROBLEMS);
+      assert.equal(logins, 0); // signin never attempted
       done();
     });
   });

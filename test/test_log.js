@@ -81,6 +81,11 @@ describe('log', function() {
       assert.equal(expected, 'some error');
     });
 
+    it('should ok with null/undefined args', function() {
+      log.info('value:', undefined, null);
+      assert.equal(expected, 'value:  ');
+    });
+
     it('should ok with log.warn', function() {
       log.warn('some error');
       assert.equal(expected, chalk.yellow('[WARN] some error'));
@@ -92,8 +97,11 @@ describe('log', function() {
     });
 
     it('should ok with log.fail', function() {
+      const savedExitCode = process.exitCode;
       log.fail({msg: 'some error', statusCode: 500});
       assert.equal(expected, chalk.red('[ERROR] some error [code=500]'));
+      assert.equal(process.exitCode, 1);
+      process.exitCode = savedExitCode;
 
       log.fail('some error');
       assert.equal(expected, chalk.red('[ERROR] some error'));

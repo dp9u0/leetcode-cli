@@ -40,6 +40,84 @@ describe('plugin:leetcode', function() {
     plugin.__set__('session', session);
   });
 
+  describe('#cookieLogin', function() {
+    const getUserNocks = () => {
+      nock('https://leetcode.com').get('/list/api/questions')
+        .reply(200, JSON.stringify({
+          favorites: {private_favorites: [{name: 'Favorite', id_hash: 'HASH'}]},
+          user_name: 'NAME'
+        }));
+      nock('https://leetcode.com').post('/graphql')
+        .reply(200, {data: {userStatus: {username: 'NAME', isPremium: false}}});
+    };
+
+    it('should ok', function(done) {
+      getUserNocks();
+      const user = {
+        login:  'user',
+        cookie: 'other=1; LEETCODE_SESSION=SESSION_ID; csrftoken=CSRF_TOKEN;'
+      };
+
+      plugin.cookieLogin(user, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.sessionId, 'SESSION_ID');
+        assert.equal(user.sessionCSRF, 'CSRF_TOKEN');
+        assert.equal(user.name, 'NAME');
+        assert.equal(user.paid, false);
+        done();
+      });
+    });
+
+    it('should fail if cookie misses LEETCODE_SESSION', function(done) {
+      plugin.cookieLogin({login: 'user', cookie: 'csrftoken=CSRF;'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+
+    it('should fail if cookie misses csrftoken', function(done) {
+      plugin.cookieLogin({login: 'user', cookie: 'LEETCODE_SESSION=SESSION;'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+
+    it('should fail if no cookie', function(done) {
+      plugin.cookieLogin({login: 'user'}, function(e, user) {
+        assert.equal(e, 'invalid cookie?');
+        done();
+      });
+    });
+  }); // #cookieLogin
+
+  describe('#checkError', function() {
+    it('should pass on expected status', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 200}, 200), null);
+    });
+
+    it('should map 401 to session expired', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 401}, 200), session.errors.EXPIRED);
+    });
+
+    it('should map 403 to blocked', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 403}, 200), session.errors.BLOCKED);
+    });
+
+    it('should map 429 to blocked', function() {
+      assert.equal(plugin.checkError(null, {statusCode: 429}, 200), session.errors.BLOCKED);
+    });
+
+    it('should keep other http errors', function() {
+      assert.deepEqual(plugin.checkError(null, {statusCode: 500}, 200),
+          {msg: 'http error', statusCode: 500});
+    });
+
+    it('should pass through network error', function() {
+      const e = new Error('boom');
+      assert.equal(plugin.checkError(e, null, 200), e);
+    });
+  }); // #checkError
+
   describe('#login', function() {
     it('should ok', function(done) {
       nock('https://leetcode.com')
@@ -65,6 +143,10 @@ describe('plugin:leetcode', function() {
           }
         }));
 
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {userStatus: {username: 'Eric', isPremium: true}}});
+
       plugin.login({}, function(e, user) {
         assert.equal(e, null);
 
@@ -73,6 +155,43 @@ describe('plugin:leetcode', function() {
         assert.equal(user.sessionId, 'SESSION_ID');
         assert.equal(user.name, 'Eric');
         assert.equal(user.hash, 'abcdef');
+        assert.equal(user.paid, true);
+        done();
+      });
+    });
+
+    it('should login ok even if user info unavailable', function(done) {
+      nock('https://leetcode.com')
+        .get('/accounts/login/')
+        .reply(200, '', { 'Set-Cookie': [
+            'csrftoken=LOGIN_CSRF_TOKEN; Max-Age=31449600; Path=/; secure'
+          ]});
+
+      nock('https://leetcode.com')
+        .post('/accounts/login/')
+        .reply(302, '', {
+          'Set-Cookie': [
+            'csrftoken=SESSION_CSRF_TOKEN; Max-Age=31449600; Path=/; secure',
+            'LEETCODE_SESSION=SESSION_ID; Max-Age=31449600; Path=/; secure'
+          ]});
+
+      nock('https://leetcode.com')
+        .get('/list/api/questions')
+        .reply(200, JSON.stringify({
+          user_name: 'Eric',
+          favorites: {
+            private_favorites: [{id_hash: 'abcdef', name: 'Favorite'}]
+          }
+        }));
+
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.login({}, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.name, 'Eric'); // falls back to favorites user_name
+        assert.equal(user.paid, undefined);
         done();
       });
     });
@@ -125,9 +244,51 @@ describe('plugin:leetcode', function() {
         .get('/api/problems/concurrency/')
         .replyWithFile(200, './test/mock/problems.json.20160911');
 
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   false,
+          questions: [
+            {questionFrontendId: '1', topicTags: [{slug: 'hash-table'}, {slug: 'two-pointers'}]},
+            {questionFrontendId: '2', topicTags: []}
+          ]
+        }}});
+
       plugin.getProblems(false, function(e, problems) {
         assert.equal(e, null);
         assert.equal(problems.length, 377 * 4);
+        // the 2016 mock carries no frontend ids, so every problem falls
+        // back to the empty tag list
+        assert.deepEqual(problems[0].tags, []);
+        done();
+      });
+    });
+
+    it('should ok sans tags if tag fetch fails', function(done) {
+      nock('https://leetcode.com')
+        .get('/api/problems/algorithms/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/database/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/shell/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .get('/api/problems/concurrency/')
+        .replyWithFile(200, './test/mock/problems.json.20160911');
+
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getProblems(false, function(e, problems) {
+        assert.equal(e, null);
+        assert.equal(problems.length, 377 * 4);
+        assert.equal(problems[0].tags, undefined);
         done();
       });
     });
@@ -182,6 +343,77 @@ describe('plugin:leetcode', function() {
     });
   }); // #getCategoryProblems
 
+  describe('#getProblemOfToday', function() {
+    it('should ok', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {activeDailyCodingChallengeQuestion:
+            {question: {titleSlug: 'find-the-difference'}}}});
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.equal(e, null);
+        assert.equal(slug, 'find-the-difference');
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+
+    it('should fail if no daily challenge', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {activeDailyCodingChallengeQuestion: null}});
+
+      plugin.getProblemOfToday(false, function(e, slug) {
+        assert.equal(e, 'failed to load problem of today!');
+        done();
+      });
+    });
+  }); // #getProblemOfToday
+
+  describe('#getTags', function() {
+    it('should page through the whole tag map', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   true,
+          questions: [{questionFrontendId: '1', topicTags: [{slug: 'hash-table'}, {slug: 'two-pointers'}]}]
+        }}});
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {problemsetQuestionListV2: {
+          hasMore:   false,
+          questions: [{questionFrontendId: '2', topicTags: []}]
+        }}});
+
+      plugin.getTags(function(e, map) {
+        assert.equal(e, null);
+        assert.deepEqual(map, {1: ['hash-table', 'two-pointers'], 2: []});
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getTags(function(e, map) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+  }); // #getTags
+
   describe('#getProblem', function() {
     beforeEach(function() {
       PROBLEM.locked = false;
@@ -196,6 +428,8 @@ describe('plugin:leetcode', function() {
         assert.equal(e, null);
         assert.equal(problem.totalAC, '89.7K');
         assert.equal(problem.totalSubmit, '175.7K');
+        assert.deepEqual(problem.hints,
+            ['Can we sort the strings?', 'XOR trick works here.']);
         assert.equal(problem.desc,
           [
             '<p>',
@@ -374,10 +608,19 @@ describe('plugin:leetcode', function() {
     });
 
     it('should fail if session expired', function(done) {
-      nock('https://leetcode.com').post('/graphql').reply(403);
+      nock('https://leetcode.com').post('/graphql').reply(401);
 
       plugin.getProblem(PROBLEM, false, function(e, problem) {
         assert.equal(e, session.errors.EXPIRED);
+        done();
+      });
+    });
+
+    it('should fail if blocked by cloudflare/rate-limit', function(done) {
+      nock('https://leetcode.com').post('/graphql').reply(403);
+
+      plugin.getProblem(PROBLEM, false, function(e, problem) {
+        assert.equal(e, session.errors.BLOCKED);
         done();
       });
     });

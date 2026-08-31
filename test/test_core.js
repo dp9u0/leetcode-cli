@@ -357,6 +357,14 @@ describe('core', function() {
       });
     });
 
+    it('should get by url ok', function(done) {
+      core.getProblem('https://leetcode.com/problems/slug0/description/', false, function(e, problem) {
+        assert.notExists(e);
+        assert.deepEqual(problem, PROBLEMS[0]);
+        done();
+      });
+    });
+
     it('should fail if not found', function(done) {
       core.getProblem(3, false, function(e, problem) {
         assert.equal(e, 'Problem not found!');
@@ -386,6 +394,34 @@ describe('core', function() {
 
       core.getProblem(0, false, function(e, problem) {
         assert.equal(e, 'getProblems error');
+        done();
+      });
+    });
+
+    it('should get problem of today ok', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb(null, 'slug1');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.notExists(e);
+        assert.equal(problem.slug, 'slug1');
+        done();
+      });
+    });
+
+    it('should fail if problem of today not found', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb(null, 'slug999');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.equal(e, 'Problem not found!');
+        done();
+      });
+    });
+
+    it('should fail if problem of today client error', function(done) {
+      next.getProblemOfToday = (needT, cb) => cb('client getProblemOfToday error');
+
+      core.getProblemOfToday(false, function(e, problem) {
+        assert.equal(e, 'client getProblemOfToday error');
         done();
       });
     });
