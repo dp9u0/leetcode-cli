@@ -343,6 +343,44 @@ describe('plugin:leetcode', function() {
     });
   }); // #getCategoryProblems
 
+  describe('#getCalendar', function() {
+    it('should ok', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {matchedUser: {userCalendar: {
+          submissionCalendar: '{"1775606400": 27, "1775692800": 52}'
+        }}}});
+
+      plugin.getCalendar(function(e, cal) {
+        assert.equal(e, null);
+        assert.deepEqual(cal, {1775606400: 27, 1775692800: 52});
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getCalendar(function(e, cal) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+
+    it('should fail on malformed calendar', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {matchedUser: {userCalendar: {submissionCalendar: 'not-json'}}}});
+
+      plugin.getCalendar(function(e, cal) {
+        assert.equal(e, 'invalid submission calendar data');
+        done();
+      });
+    });
+  }); // #getCalendar
+
   describe('#getProblemOfToday', function() {
     it('should ok', function(done) {
       nock('https://leetcode.com')
