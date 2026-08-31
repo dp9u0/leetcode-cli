@@ -73,15 +73,15 @@ describe('plugin', function() {
 
     it('should find missing ok', function() {
       cache.get = () => {
-        return {company: true, leetcode: false, solution: true};
+        return {retry: true, leetcode: false, foo: true};
       };
 
       const res = Plugin.init(p4);
       assert.equal(res, false);
-      assert.deepEqual(Plugin.plugins.length, 5);
+      assert.deepEqual(Plugin.plugins.length, 4);
 
       const names = Plugin.plugins.map(p => p.name);
-      assert.deepEqual(names, ['retry', 'cache', 'leetcode', 'company', 'solution']);
+      assert.deepEqual(names, ['retry', 'cache', 'leetcode', 'foo']);
 
       assert.equal(p4.next, p3);
       assert.equal(p3.next, p2);
