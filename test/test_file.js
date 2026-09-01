@@ -102,6 +102,18 @@ describe('file', function() {
       assert.equal(meta.lang, 'javascript');
     });
 
+    it('should meta ok with prefixed id that contains a space', function() {
+      file.data = x => [
+        '/ *',
+        '  * @lc app=leetcode.cn id=LCR 064 lang=javascript',
+        '  * /'
+      ].join('\n');
+      const meta = file.meta('dummy');
+      assert.equal(meta.app, 'leetcode.cn');
+      assert.equal(meta.id, 'LCR 064');
+      assert.equal(meta.lang, 'javascript');
+    });
+
     it('should meta ok within file name', function() {
       file.data = x => [
         '/ *',
