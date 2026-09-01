@@ -185,6 +185,12 @@ describe('helper', function() {
       assert.deepEqual(h.langToCommentStyle('swift'), C_STYLE);
       assert.deepEqual(h.langToCommentStyle('typescript'), C_STYLE);
     });
+
+    it('should return empty style for unknown lang', function() {
+      const EMPTY_STYLE = {start: '', line: '', end: '', singleLine: ''};
+      assert.deepEqual(h.langToCommentStyle('all'), EMPTY_STYLE);
+      assert.deepEqual(h.langToCommentStyle('unknown'), EMPTY_STYLE);
+    });
   }); // #langToCommentStyle
 
   describe('#getSetCookieValue', function() {
