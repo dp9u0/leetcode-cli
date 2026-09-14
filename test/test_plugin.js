@@ -73,20 +73,37 @@ describe('plugin', function() {
 
     it('should find missing ok', function() {
       cache.get = () => {
-        return {company: true, leetcode: false, solution: true};
+        return {retry: true, leetcode: false, foo: true};
       };
 
       const res = Plugin.init(p4);
       assert.equal(res, false);
-      assert.deepEqual(Plugin.plugins.length, 5);
+      assert.deepEqual(Plugin.plugins.length, 4);
 
       const names = Plugin.plugins.map(p => p.name);
-      assert.deepEqual(names, ['retry', 'cache', 'leetcode', 'company', 'solution']);
+      assert.deepEqual(names, ['retry', 'cache', 'leetcode', 'foo']);
 
       assert.equal(p4.next, p3);
       assert.equal(p3.next, p2);
       assert.equal(p2.next, null);
       assert.equal(p1.next, null);
+    });
+
+    it('should skip disabled missing plugin', function() {
+      cache.get = () => {
+        return {retry: true, leetcode: false, foo: false};
+      };
+
+      // foo is disabled and absent from disk: it was dropped on purpose,
+      // auto-installing it from upstream would resurrect dropped code
+      const res = Plugin.init(p4);
+      assert.equal(res, true);
+
+      // disabled plugins still show up in the listing, but foo must not:
+      // it's neither installed nor queued for auto-install
+      const names = Plugin.plugins.map(p => p.name);
+      assert.deepEqual(names, ['retry', 'cache', 'leetcode']);
+      assert.equal(Plugin.plugins.find(p => p.missing), undefined);
     });
   }); // #Plugin.init
 

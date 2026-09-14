@@ -8,8 +8,15 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,13 +31,43 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: build standalone binaries
+      # pkg compiles node from source for any target without a cached
+      # binary, which cannot be cross-compiled (arm64 from an x64 host
+      # fails in openssl's arm_arch.h). Building the native arch only
+      # avoids that: the host arch is inferred from the runner and pkg
+      # picks the matching node* target from the config.
+      - name: build standalone binaries (native arch)
         run: pnpm exec pkg . --out-path dist
 
       - name: checksums
+        shell: bash
         run: |
           cd dist
           for f in *; do sha256sum "$f" > "$f.sha256"; done
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+          merge-multiple: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: create release
         env:
@@ -41,6 +78,7 @@ jobs:
             echo "tag $TAG already exists, skipping (bump version in package.json for a new release)"
             exit 0
           fi
-          gh release create "$TAG" dist/* \
+          gh release create "$TAG" dist-all/* \
             --title "$TAG" \
             --generate-notes
+

@@ -1,11 +1,8 @@
 .github/
 docs/
 test/
-.eslintrc.js
+eslint.config.js
 .gitignore
-.travis.yml
-Dockerfile
-.dockerignore
 .nyc_output/
 .vscode/
 coverage/

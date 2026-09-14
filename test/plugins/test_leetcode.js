@@ -226,6 +226,48 @@ describe('plugin:leetcode', function() {
     });
   }); // #login
 
+  describe('#getUser', function() {
+    const favoriteNocks = (privateFavorites) => {
+      nock('https://leetcode.com').get('/list/api/questions')
+        .reply(200, JSON.stringify({
+          user_name: 'NAME',
+          favorites: {private_favorites: privateFavorites}
+        }));
+      nock('https://leetcode.com').post('/graphql')
+        .reply(200, {data: {userStatus: {username: 'NAME', isPremium: true}}});
+    };
+
+    it('should use the Favorite list when present', function(done) {
+      favoriteNocks([{id_hash: 'FAV', name: 'Favorite'}, {id_hash: 'OTHER', name: 'Other'}]);
+      plugin.getUser({}, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.hash, 'FAV');
+        assert.equal(user.name, 'NAME');
+        done();
+      });
+    });
+
+    it('should fall back to first private favorite (e.g. leetcode.cn)', function(done) {
+      favoriteNocks([{id_hash: 'CNHASH', name: '进度-Ng'}]);
+      plugin.getUser({}, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.hash, 'CNHASH');
+        assert.equal(user.name, 'NAME');
+        done();
+      });
+    });
+
+    it('should still login when no private favorites', function(done) {
+      favoriteNocks([]);
+      plugin.getUser({}, function(e, user) {
+        assert.equal(e, null);
+        assert.equal(user.hash, undefined);
+        assert.equal(user.name, 'NAME');
+        done();
+      });
+    });
+  }); // #getUser
+
   describe('#getProblems', function() {
     it('should ok', function(done) {
       nock('https://leetcode.com')
@@ -342,6 +384,44 @@ describe('plugin:leetcode', function() {
       });
     });
   }); // #getCategoryProblems
+
+  describe('#getCalendar', function() {
+    it('should ok', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {matchedUser: {userCalendar: {
+          submissionCalendar: '{"1775606400": 27, "1775692800": 52}'
+        }}}});
+
+      plugin.getCalendar(function(e, cal) {
+        assert.equal(e, null);
+        assert.deepEqual(cal, {1775606400: 27, 1775692800: 52});
+        done();
+      });
+    });
+
+    it('should fail if http error', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(500);
+
+      plugin.getCalendar(function(e, cal) {
+        assert.deepEqual(e, {msg: 'http error', statusCode: 500});
+        done();
+      });
+    });
+
+    it('should fail on malformed calendar', function(done) {
+      nock('https://leetcode.com')
+        .post('/graphql')
+        .reply(200, {data: {matchedUser: {userCalendar: {submissionCalendar: 'not-json'}}}});
+
+      plugin.getCalendar(function(e, cal) {
+        assert.equal(e, 'invalid submission calendar data');
+        done();
+      });
+    });
+  }); // #getCalendar
 
   describe('#getProblemOfToday', function() {
     it('should ok', function(done) {
