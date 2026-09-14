@@ -88,6 +88,23 @@ describe('plugin', function() {
       assert.equal(p2.next, null);
       assert.equal(p1.next, null);
     });
+
+    it('should skip disabled missing plugin', function() {
+      cache.get = () => {
+        return {retry: true, leetcode: false, foo: false};
+      };
+
+      // foo is disabled and absent from disk: it was dropped on purpose,
+      // auto-installing it from upstream would resurrect dropped code
+      const res = Plugin.init(p4);
+      assert.equal(res, true);
+
+      // disabled plugins still show up in the listing, but foo must not:
+      // it's neither installed nor queued for auto-install
+      const names = Plugin.plugins.map(p => p.name);
+      assert.deepEqual(names, ['retry', 'cache', 'leetcode']);
+      assert.equal(Plugin.plugins.find(p => p.missing), undefined);
+    });
   }); // #Plugin.init
 
   describe('#install', function() {
