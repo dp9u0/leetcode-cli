@@ -9,8 +9,8 @@ leetcode login -l
 2. run the latest code:
 ```
 cd <your local repo>
-git pull --rebase origin master
-./bin/install	// install globally, OR
+git pull --rebase origin main
+pnpm install
 ./bin/leetcode <command>	// run the command locally
 ```
 -->

@@ -50,6 +50,9 @@ describe('plugin:cache', function() {
 
     session = rewire('../../lib/session');
     session.__set__('cache', cache);
+    // session.saveUser chmods through `file`; point it at the same sandboxed
+    // file as `cache`, or the chmod targets the real home dir and fails on CI
+    session.__set__('file', file);
 
     plugin = rewire('../../lib/plugins/cache');
     plugin.__set__('cache', cache);

@@ -58,13 +58,11 @@ describe('file', function() {
 
     it('should listCodeDir ok', function() {
       const files = file.listCodeDir('lib/plugins');
-      assert.equal(files.length, 6);
+      assert.equal(files.length, 4);
       assert.equal(files[0].name, 'cache');
-      assert.equal(files[1].name, 'company');
-      assert.equal(files[2].name, 'leetcode.cn');
-      assert.equal(files[3].name, 'leetcode');
-      assert.equal(files[4].name, 'retry');
-      assert.equal(files[5].name, 'solution.discuss');
+      assert.equal(files[1].name, 'leetcode.cn');
+      assert.equal(files[2].name, 'leetcode');
+      assert.equal(files[3].name, 'retry');
     });
 
     it('should pluginFile ok', function() {
@@ -101,6 +99,18 @@ describe('file', function() {
       const meta = file.meta('dummy');
       assert.equal(meta.app, 'leetcode')
       assert.equal(meta.id, '123');
+      assert.equal(meta.lang, 'javascript');
+    });
+
+    it('should meta ok with prefixed id that contains a space', function() {
+      file.data = x => [
+        '/ *',
+        '  * @lc app=leetcode.cn id=LCR 064 lang=javascript',
+        '  * /'
+      ].join('\n');
+      const meta = file.meta('dummy');
+      assert.equal(meta.app, 'leetcode.cn');
+      assert.equal(meta.id, 'LCR 064');
       assert.equal(meta.lang, 'javascript');
     });
 

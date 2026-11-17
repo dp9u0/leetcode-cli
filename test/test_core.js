@@ -110,6 +110,18 @@ describe('core', function() {
     });
   }); // #filterProblems
 
+  describe('#getCalendar', function() {
+    it('should delegate to next', function(done) {
+      next.getCalendar = cb => cb(null, {1: 2});
+
+      core.getCalendar(function(e, cal) {
+        assert.notExists(e);
+        assert.deepEqual(cal, {1: 2});
+        done();
+      });
+    });
+  }); // #getCalendar
+
   describe('#starProblem', function() {
     it('should ok', function(done) {
       next.starProblem = (p, starred, cb) => cb(null, starred);

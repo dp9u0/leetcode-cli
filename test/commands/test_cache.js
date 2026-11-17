@@ -61,6 +61,35 @@ describe('command:cache', function() {
     assert.exists(rowUser);
   });
 
+  it('should refresh the problems list', function(done) {
+    cache.set('problems', [{fid: 1, name: 'old'}]);
+    cache.set('problemsMeta', {fetchedAt: Date.now(), v: 2});
+
+    const NEW = [{fid: 1, name: 'new'}, {fid: 2, name: 'two'}];
+    cmd.__set__('core', {getProblems: (t, cb) => cb(null, NEW)});
+
+    cmd.handler({refresh: true, dontTranslate: true});
+
+    const text = out.join('\n');
+    assert.include(text, 'refreshed (2 questions)');
+    // the problems cache was dropped so the next fetch re-pulls
+    assert.equal(cache.get('problems'), null);
+    assert.equal(cache.get('problemsMeta'), null);
+    done();
+  });
+
+  it('should fail loudly if refresh fails', function(done) {
+    cache.set('problems', [{fid: 1}]);
+    cmd.__set__('core', {getProblems: (t, cb) => cb('refresh error')});
+
+    cmd.handler({refresh: true, dontTranslate: true});
+
+    const text = out.join('\n');
+    assert.include(text, 'refresh error');
+    assert.equal(process.exitCode, 1);
+    done();
+  });
+
   it('should delete caches by id', function() {
     cache.set('1.two-sum.algorithms', {x: 1});
     cache.set('2.add-two.algorithms', {x: 1});

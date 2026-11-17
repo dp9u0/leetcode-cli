@@ -57,4 +57,35 @@ describe('command:stat', function() {
     assert.include(text, 'Not Accepted');
     assert.include(text, 'Remaining');
   });
+
+  it('should render the calendar from the server', function(done) {
+    cmd.__set__('core', {
+      filterProblems: (argv, cb) => cb(null, PROBLEMS.slice()),
+      getCalendar:    (cb) => cb(null, {[Math.floor(Date.now() / 1000)]: 7})
+    });
+
+    cmd.handler({lock: true, cal: true});
+    // async getCalendar -> handler prints inside callback
+    setTimeout(() => {
+      const text = stripAnsi(out.join('\n'));
+      assert.include(text, 'Sun');
+      assert.include(text, 'Mon');
+      assert.match(text, /▣/, 'submission cells rendered');
+      done();
+    }, 10);
+  });
+
+  it('should fall back to local log when server calendar fails', function(done) {
+    cmd.__set__('core', {
+      filterProblems: (argv, cb) => cb(null, PROBLEMS.slice()),
+      getCalendar:    (cb) => cb('boom')
+    });
+
+    cmd.handler({lock: true, cal: true});
+    setTimeout(() => {
+      const text = stripAnsi(out.join('\n'));
+      assert.include(text, 'using local log');
+      done();
+    }, 10);
+  });
 });
